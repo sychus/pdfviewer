@@ -7,6 +7,7 @@ import '../../application/open_document.dart';
 import '../../application/save_reading_position.dart';
 import '../../domain/entities/document_source.dart';
 import '../../domain/repositories/document_repository.dart';
+import '../../domain/repositories/incoming_documents.dart';
 import '../viewer/viewer_screen.dart';
 
 const _pdfs = XTypeGroup(
@@ -16,49 +17,83 @@ const _pdfs = XTypeGroup(
   uniformTypeIdentifiers: <String>['com.adobe.pdf'],
 );
 
-/// Empty state: no document open yet.
+/// Empty state, and the app's entry point for documents.
 ///
-/// Temporary by design. Once file association lands in Phase 5, most launches
-/// will skip this screen entirely — the OS hands us a document and we go
-/// straight to the viewer.
+/// Two ways in, one destination: the user picks a file here, or the operating
+/// system hands us one because they tapped a PDF elsewhere and chose this app.
+/// Both funnel through [_HomeScreenState._open].
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     required this.openDocument,
     required this.savePosition,
+    required this.incoming,
   });
 
   final OpenDocument openDocument;
   final SaveReadingPosition savePosition;
+  final IncomingDocuments incoming;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  bool _opening = false;
+  StreamSubscription<DocumentSource>? _incoming;
+  bool _busy = false;
 
-  Future<void> _pickAndOpen() async {
-    if (_opening) return;
-    setState(() => _opening = true);
+  @override
+  void initState() {
+    super.initState();
 
+    // Documents handed to an app that is already running.
+    _incoming = widget.incoming.stream().listen(_open);
+
+    // And the one this launch may have been started with. Deferred to after
+    // the first frame so there is a Navigator to push onto.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final launchedWith = await widget.incoming.initial();
+      if (launchedWith != null) await _open(launchedWith);
+    });
+  }
+
+  @override
+  void dispose() {
+    _incoming?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _pick() async {
+    if (_busy) return;
+    setState(() => _busy = true);
     try {
       final picked = await openFile(acceptedTypeGroups: const [_pdfs]);
       if (picked == null || !mounted) return;
+      await _open(DocumentSource(picked.path), alreadyBusy: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
 
-      final opened = await widget.openDocument(DocumentSource(picked.path));
+  Future<void> _open(DocumentSource source, {bool alreadyBusy = false}) async {
+    if (_busy && !alreadyBusy) return;
+    if (!alreadyBusy && mounted) setState(() => _busy = true);
+
+    try {
+      final opened = await widget.openDocument(source);
       if (!mounted) return;
 
-      // Not awaited on purpose: awaiting navigation would keep [_opening] true
-      // for as long as the user reads the document.
-      unawaited(
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => ViewerScreen(
-              document: opened.document,
-              resumeAt: opened.resumeAt,
-              savePosition: widget.savePosition,
-            ),
+      // Consume the pending document so it is not replayed the next time the
+      // app resumes — otherwise closing the viewer bounces straight back into
+      // it and the app feels stuck.
+      widget.incoming.acknowledge();
+
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => ViewerScreen(
+            document: opened.document,
+            resumeAt: opened.resumeAt,
+            savePosition: widget.savePosition,
           ),
         ),
       );
@@ -71,7 +106,7 @@ class _HomeScreenState extends State<HomeScreen> {
       debugPrint('Unexpected failure opening a document: $error\n$stackTrace');
       _report('Something went wrong opening that file.');
     } finally {
-      if (mounted) setState(() => _opening = false);
+      if (!alreadyBusy && mounted) setState(() => _busy = false);
     }
   }
 
@@ -95,9 +130,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: _opening ? null : _pickAndOpen,
+              onPressed: _busy ? null : _pick,
               icon: const Icon(Icons.folder_open),
-              label: Text(_opening ? 'Opening…' : 'Open a PDF'),
+              label: Text(_busy ? 'Opening…' : 'Open a PDF'),
             ),
           ],
         ),

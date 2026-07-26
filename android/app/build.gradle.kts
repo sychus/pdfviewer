@@ -20,7 +20,15 @@ val hasReleaseKeystore = keystoreProperties.containsKey("storeFile")
 
 android {
     namespace = "io.github.sychus.pdfviewer"
-    compileSdk = flutter.compileSdkVersion
+
+    // Pinned above Flutter's default (36) because receive_sharing_intent
+    // declares a minimum compileSdk of 37 and the build fails without it.
+    //
+    // Safe: compileSdk only selects which APIs are visible at compile time and
+    // changes no runtime behaviour. targetSdk is the one that alters how the
+    // platform treats the app, and it stays on Flutter's default below.
+    // AGP warns that 36 is its "maximum recommended" — a warning, not a limit.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

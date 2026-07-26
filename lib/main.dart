@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 
 import 'application/open_document.dart';
 import 'application/save_reading_position.dart';
+import 'domain/repositories/incoming_documents.dart';
 import 'infrastructure/pdf_engine.dart';
 import 'infrastructure/pdfrx_document_repository.dart';
+import 'infrastructure/platform/no_incoming_documents.dart';
+import 'infrastructure/platform/shared_intent_documents.dart';
 import 'infrastructure/prefs_position_store.dart';
 import 'presentation/home/home_screen.dart';
 
@@ -13,8 +16,8 @@ void main() {
   _silenceDebugLoggingInRelease();
   initializePdfEngine();
 
-  // Wired by hand. This is the composition root, and it is four lines long —
-  // a DI container here would be ceremony, not architecture. It is also the
+  // Wired by hand. This is the composition root, and it is a handful of lines
+  // — a DI container here would be ceremony, not architecture. It is also the
   // only place in the app where a concrete implementation is named.
   final positions = PrefsPositionStore();
 
@@ -25,8 +28,23 @@ void main() {
         positions: positions,
       ),
       savePosition: SaveReadingPosition(positions),
+      incoming: _incomingDocuments(),
     ),
   );
+}
+
+/// Picks the "Open with" implementation for the current platform.
+///
+/// `defaultTargetPlatform` rather than `dart:io`'s `Platform`, because the
+/// latter does not exist on web and this file is compiled for every target.
+IncomingDocuments _incomingDocuments() {
+  if (kIsWeb) return const NoIncomingDocuments();
+
+  return switch (defaultTargetPlatform) {
+    TargetPlatform.android || TargetPlatform.iOS =>
+      const SharedIntentDocuments(),
+    _ => const NoIncomingDocuments(),
+  };
 }
 
 /// Turns off `debugPrint` in release builds.
@@ -56,10 +74,12 @@ class PdfViewerApp extends StatelessWidget {
     super.key,
     required this.openDocument,
     required this.savePosition,
+    required this.incoming,
   });
 
   final OpenDocument openDocument;
   final SaveReadingPosition savePosition;
+  final IncomingDocuments incoming;
 
   @override
   Widget build(BuildContext context) {
@@ -74,6 +94,7 @@ class PdfViewerApp extends StatelessWidget {
       home: HomeScreen(
         openDocument: openDocument,
         savePosition: savePosition,
+        incoming: incoming,
       ),
     );
   }

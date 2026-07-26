@@ -28,11 +28,14 @@ Be aware of what is and is not verified. Nothing below is aspirational.
 - Live page counter
 - **Resume where you left off** — and it survives renaming, moving, or copying the file,
   because documents are identified by a fingerprint of their content, not by their path
+- **Open with / Share to, on Android** — tap a PDF anywhere on the device and pick PDF Viewer,
+  or send one to it from a share sheet. Works whether the app was closed or already running
 
 ### What does not work yet
 
-- **Double-clicking a PDF in Finder, or tapping one on Android, does not open this app.** File
-  association is not wired up on any platform.
+- **Double-clicking a PDF in Finder does not open this app.** File association is Android-only
+  so far. Desktop needs different plumbing per OS, and on Windows and Linux a second document
+  arrives as a *new process*, making it an IPC problem rather than a file-handling one.
 - No text search, no recent-files list, no annotations, no bookmarks. Deliberately out of scope
   for v1.
 

@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="pdfviewer"
+        android:label="PDF Viewer"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -23,6 +23,32 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+
+            <!-- "Open with" for PDFs.
+                 Nearly everything on modern Android hands out content:// URIs
+                 rather than file paths: Files, Drive, Gmail, WhatsApp, Chrome
+                 downloads. This is the filter that actually gets used. -->
+            <intent-filter android:label="PDF Viewer">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="content" android:mimeType="application/pdf"/>
+            </intent-filter>
+
+            <!-- Older apps and some file managers still pass file:// paths. -->
+            <intent-filter android:label="PDF Viewer">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:scheme="file" android:mimeType="application/pdf"/>
+            </intent-filter>
+
+            <!-- "Share to" — reaching the app from a share sheet rather than
+                 from a file listing. Same document, different entry point. -->
+            <intent-filter android:label="PDF Viewer">
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="application/pdf"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
