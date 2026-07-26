@@ -1,0 +1,85 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# FVM Version Cache
+# The pinned version lives in .fvmrc (committed); the SDK itself does not.
+.fvm/
+
+# ── Signing secrets ──────────────────────────────────────────────────────────
+# Never commit these. A leaked keystore lets anyone ship builds signed as you,
+# and it cannot be rotated for an app already on a store.
+#
+# android/.gitignore already covers key.properties and **/*.keystore, but NOT
+# *.jks — which is the extension Flutter's own signing guide tells you to
+# create (upload-keystore.jks). Covered here.
+*.jks
+*.keystore
+key.properties
+
+# Apple signing material
+*.mobileprovision
+*.p12
+*.cer
+*.certSigningRequest
+
+# ── Local configuration ──────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+local.properties
+
+# Per-developer tool settings. Committed project settings are fine; the
+# .local variants are personal and machine-specific.
+.claude/settings.local.json
+
+# ── Test and build artefacts ─────────────────────────────────────────────────
+coverage/
+*.iml
+
+
+# ----- IA info
+
+PLAN.md

@@ -1,0 +1,28 @@
+name: pdfviewer
+description: "Lightweight cross-platform PDF viewer"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  crypto: ^3.0.7
+  file_selector: ^1.1.0
+  flutter:
+    sdk: flutter
+  pdfrx: ^2.4.7
+  shared_preferences: ^2.5.5
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+  # Needed because pdfrx talks to PDFium over FFI: exercising the repository
+  # for real requires a running platform, not the pure Dart test VM.
+  integration_test:
+    sdk: flutter
+  shared_preferences_platform_interface: ^2.4.2
+
+flutter:
+  uses-material-design: true
