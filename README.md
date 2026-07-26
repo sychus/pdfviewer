@@ -15,9 +15,9 @@ Be aware of what is and is not verified. Nothing below is aspirational.
 
 | Platform | Builds | Runs | Notes |
 |---|---|---|---|
-| **macOS** | ✅ | ✅ verified | Open, scroll, zoom, resume where you left off |
-| **Android** | ✅ | ✅ verified | Verified on a physical device. [Signed APKs are published](https://github.com/sychus/pdfviewer/releases/latest) |
-| iOS | — | — | Scaffolded, never built |
+| **macOS** | ✅ | ✅ verified | Universal DMG published. Not notarised — Gatekeeper needs one manual approval |
+| **Android** | ✅ | ✅ verified | Verified on a physical device. [Signed APKs published](https://github.com/sychus/pdfviewer/releases/latest) |
+| iOS | — | — | **Cannot be distributed** without a paid Apple Developer certificate |
 | Windows / Linux | — | — | Scaffolded. **Cannot be built on macOS** — Flutter does not cross-compile desktop targets; these need CI runners or native machines |
 | Web | — | — | Scaffolded, never built |
 
@@ -60,19 +60,30 @@ with document size.
 
 ## Download
 
-Prebuilt binaries are attached to each [release](https://github.com/sychus/pdfviewer/releases).
+Prebuilt binaries are attached to each [release](https://github.com/sychus/pdfviewer/releases/latest).
 GitHub Releases has no folders, so platform and architecture live in the filename:
 
 ```
+pdfviewer-<version>-macos.dmg                  ← macOS 10.15+, Intel and Apple Silicon
 pdfviewer-<version>-android-arm64-v8a.apk      ← almost every modern phone
 pdfviewer-<version>-android-armeabi-v7a.apk    ← older 32-bit devices
 pdfviewer-<version>-android-x86_64.apk         ← emulators
 ```
 
-To install an APK you must allow installs from your browser or file manager:
+**macOS will block it the first time.** The build is not notarised, which requires a paid Apple
+Developer account. Drag it to Applications, try to launch it, then go to **System Settings →
+Privacy & Security** and click **Open Anyway**. Once only. On macOS 15 (Sequoia) and newer,
+right-click → Open no longer works for this — Privacy & Security is the only route left.
+Terminal equivalent: `xattr -dr com.apple.quarantine "/Applications/PDF Viewer.app"`
+
+**Android** needs installs allowed from your browser or file manager:
 **Settings → Apps → Special access → Install unknown apps**.
 
-Other platforms are not published yet — build from source with the instructions below.
+**iOS is not published, and cannot be.** Apple does not permit installing an app that is not
+signed with a paid developer certificate — there is no downloadable iOS build outside the App
+Store or TestFlight. The target builds; it just cannot be distributed this way.
+
+Windows and Linux are not published yet — build from source with the instructions below.
 
 ---
 
