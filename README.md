@@ -16,7 +16,7 @@ Be aware of what is and is not verified. Nothing below is aspirational.
 | Platform | Builds | Runs | Notes |
 |---|---|---|---|
 | **macOS** | ✅ | ✅ verified | Open, scroll, zoom, resume where you left off |
-| **Android** | ✅ | ⚠️ **not yet exercised on a device** | Debug and release APKs build clean; the app has not been driven on hardware or an emulator |
+| **Android** | ✅ | ✅ verified | Verified on a physical device. [Signed APKs are published](https://github.com/sychus/pdfviewer/releases/latest) |
 | iOS | — | — | Scaffolded, never built |
 | Windows / Linux | — | — | Scaffolded. **Cannot be built on macOS** — Flutter does not cross-compile desktop targets; these need CI runners or native machines |
 | Web | — | — | Scaffolded, never built |
@@ -154,9 +154,9 @@ the app's own container, which needs no entitlement.
 
 ## Android
 
-> **Not yet verified on a device.** Both debug and release APKs build clean, and the code paths
-> are understood (see the notes below), but nobody has driven the app on real hardware. Treat
-> this section as "should work", not "does work".
+Verified on a physical device. If you only want to run it, grab the APK from
+[Releases](https://github.com/sychus/pdfviewer/releases/latest) — everything below is for
+building from source.
 
 ### Prerequisites
 
