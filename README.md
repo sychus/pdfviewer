@@ -55,6 +55,24 @@ with document size.
 
 ---
 
+## Download
+
+Prebuilt binaries are attached to each [release](https://github.com/sychus/pdfviewer/releases).
+GitHub Releases has no folders, so platform and architecture live in the filename:
+
+```
+pdfviewer-<version>-android-arm64-v8a.apk      ← almost every modern phone
+pdfviewer-<version>-android-armeabi-v7a.apk    ← older 32-bit devices
+pdfviewer-<version>-android-x86_64.apk         ← emulators
+```
+
+To install an APK you must allow installs from your browser or file manager:
+**Settings → Apps → Special access → Install unknown apps**.
+
+Other platforms are not published yet — build from source with the instructions below.
+
+---
+
 ## Requirements
 
 | Tool | Version | Why |
@@ -207,12 +225,36 @@ file you handed it.
 
 ### Signing
 
-Release APKs currently build with debug keys. Before shipping anywhere, generate an upload
-keystore and wire it up per [Flutter's signing guide][signing].
+Published APKs are signed with a real upload keystore, not debug keys. In Android **the
+signature is the app's identity**: once a build is installed, only builds signed with the same
+key can update it. Publishing with debug keys and migrating later forces every existing user to
+uninstall — losing their reading positions in the process.
 
-`.gitignore` already blocks `*.jks`, `*.keystore` and `key.properties`. Note that Flutter's own
-`android/.gitignore` covers `*.keystore` but **not** `*.jks` — which is the extension its own
-documentation tells you to create. That gap is closed in the root `.gitignore` here.
+The keystore and its password live **outside the repository** and are not distributed.
+`android/key.properties` (gitignored) points at them:
+
+```properties
+storeFile=/absolute/path/to/upload-keystore.jks
+storePassword=…
+keyAlias=upload
+keyPassword=…
+```
+
+**A fresh clone will not have that file, and does not need it.** `build.gradle.kts` detects its
+absence and falls back to debug signing, so `flutter build apk --release` works for anyone.
+Only builds intended for distribution need the real key.
+
+To set up your own:
+
+```bash
+keytool -genkeypair -v -keystore ~/keys/upload.jks \
+  -alias upload -keyalg RSA -keysize 2048 -validity 10000
+```
+
+`.gitignore` blocks `*.jks`, `*.keystore` and `key.properties`. Worth knowing: Flutter's own
+`android/.gitignore` covers `*.keystore` but **not** `*.jks` — the very extension
+[its signing guide][signing] tells you to create. That gap is closed in the root `.gitignore`
+here.
 
 [signing]: https://docs.flutter.dev/deployment/android#signing-the-app
 
