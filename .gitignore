@@ -83,3 +83,6 @@ coverage/
 # ----- IA info
 
 PLAN.md
+
+# Local Netlify folder
+.netlify

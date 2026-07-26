@@ -60,6 +60,9 @@ with document size.
 
 ## Download
 
+**[justpdfviewer.netlify.app](https://justpdfviewer.netlify.app)** picks the right build for
+whatever you are browsing on. Everything below is the same thing, by hand.
+
 Prebuilt binaries are attached to each [release](https://github.com/sychus/pdfviewer/releases/latest).
 GitHub Releases has no folders, so platform and architecture live in the filename:
 

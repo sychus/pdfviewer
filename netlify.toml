@@ -1,0 +1,20 @@
+# The site is plain static files — no build step, nothing to install.
+[build]
+  publish = "website"
+
+# The page reads the latest release from api.github.com at runtime, so that
+# host must be allowed. Everything else is denied: no fonts, no analytics, no
+# CDNs. A landing page for an app that makes no network calls should not be
+# quietly making its own.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src https://api.github.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+
+[[headers]]
+  for = "/*.svg"
+  [headers.values]
+    Cache-Control = "public, max-age=604800"

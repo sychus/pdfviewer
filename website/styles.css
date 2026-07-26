@@ -1,0 +1,376 @@
+/* PDF Viewer — landing page.
+   No framework, no webfonts, no external requests. The product claims to be
+   lightweight; the page that sells it should not need 300KB of JavaScript to
+   render four paragraphs and a download list. */
+
+:root {
+  color-scheme: light dark;
+
+  --crimson: #B02A34;
+  --crimson-deep: #8C1721;
+  --crimson-lift: #D4444E;
+
+  --bg: #FBFAFA;
+  --bg-raised: #FFFFFF;
+  --bg-sunken: #F2F0F0;
+  --border: #E4E0E0;
+  --text: #1A1618;
+  --text-dim: #635B5E;
+  --shadow: 0 1px 2px rgba(26, 22, 24, .06), 0 8px 24px rgba(26, 22, 24, .06);
+  --shadow-lift: 0 2px 4px rgba(26, 22, 24, .08), 0 16px 40px rgba(26, 22, 24, .10);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131011;
+    --bg-raised: #1C1819;
+    --bg-sunken: #0E0C0D;
+    --border: #2E2829;
+    --text: #F4F1F1;
+    --text-dim: #A79FA1;
+    --crimson: #E05A63;
+    --crimson-lift: #F07079;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px rgba(0, 0, 0, .3);
+    --shadow-lift: 0 2px 4px rgba(0, 0, 0, .5), 0 16px 40px rgba(0, 0, 0, .45);
+  }
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation: none !important; transition: none !important; }
+}
+
+body {
+  margin: 0;
+  /* Deliberately no `overflow-x: hidden`. Measured at 390px: scrollWidth equals
+     clientWidth and nothing overflows, so hiding it would only mask a future
+     layout bug instead of showing one. */
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.65 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--crimson); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:hover { color: var(--crimson-lift); }
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .88em;
+  background: var(--bg-sunken);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: .12em .4em;
+  overflow-wrap: anywhere;
+}
+
+.skip {
+  position: absolute;
+  left: -9999px;
+}
+.skip:focus {
+  left: 1rem; top: 1rem;
+  z-index: 10;
+  background: var(--bg-raised);
+  padding: .6rem 1rem;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+/* ── top bar ─────────────────────────────────────────────────────────────── */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .85rem clamp(1rem, 4vw, 2.5rem);
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: .6rem;
+  font-weight: 650;
+  letter-spacing: -.01em;
+  color: var(--text);
+  text-decoration: none;
+}
+.brand img { border-radius: 7px; display: block; }
+
+.topbar nav {
+  display: flex;
+  gap: clamp(.9rem, 3vw, 1.75rem);
+  font-size: .93rem;
+}
+.topbar nav a { color: var(--text-dim); text-decoration: none; }
+.topbar nav a:hover { color: var(--text); }
+
+/* ── hero ────────────────────────────────────────────────────────────────── */
+
+main { max-width: 1080px; margin: 0 auto; padding: 0 clamp(1rem, 4vw, 2.5rem); }
+
+.hero {
+  text-align: center;
+  padding: clamp(3.5rem, 11vw, 7rem) 0 clamp(2.5rem, 7vw, 4.5rem);
+}
+
+.hero-icon {
+  border-radius: 24px;
+  box-shadow: var(--shadow-lift);
+  margin-bottom: 2rem;
+}
+
+.hero h1 {
+  margin: 0 auto 1.25rem;
+  max-width: 17ch;
+  font-size: clamp(2rem, 6.5vw, 3.7rem);
+  line-height: 1.07;
+  letter-spacing: -.032em;
+  font-weight: 700;
+  /* Evens out the line lengths without hardcoding break points. Ignored by
+     older browsers, which simply wrap normally — no layout damage either way. */
+  text-wrap: balance;
+}
+
+.lede { text-wrap: pretty; }
+
+.lede {
+  margin: 0 auto;
+  max-width: 60ch;
+  font-size: clamp(1.03rem, 2.2vw, 1.18rem);
+  color: var(--text-dim);
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  justify-content: center;
+  margin: 2.25rem 0 1.5rem;
+}
+
+.hero-note { font-size: .87rem; color: var(--text-dim); margin: 0; }
+
+/* ── buttons ─────────────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  padding: .72rem 1.5rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-weight: 560;
+  font-size: .97rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+}
+.btn:active { transform: translateY(1px); }
+
+.btn.primary {
+  background: linear-gradient(180deg, var(--crimson) 0%, var(--crimson-deep) 100%);
+  color: #fff;
+  box-shadow: var(--shadow);
+}
+.btn.primary:hover { color: #fff; box-shadow: var(--shadow-lift); }
+
+.btn.ghost {
+  background: var(--bg-raised);
+  border-color: var(--border);
+  color: var(--text);
+}
+.btn.ghost:hover { color: var(--text); border-color: var(--text-dim); }
+
+/* ── features ────────────────────────────────────────────────────────────── */
+
+/* Two columns, not auto-fit. There are four cards: auto-fit lands on three at
+   this width and strands the fourth alone on its own row. */
+.features {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  padding: clamp(2rem, 6vw, 3.5rem) 0;
+}
+@media (min-width: 780px) {
+  .features { grid-template-columns: 1fr 1fr; }
+}
+.features article {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.6rem;
+}
+.features h2 {
+  margin: 0 0 .6rem;
+  font-size: 1.06rem;
+  letter-spacing: -.012em;
+}
+.features p { margin: 0; color: var(--text-dim); font-size: .95rem; }
+
+/* ── downloads ───────────────────────────────────────────────────────────── */
+
+.downloads { padding: clamp(2.5rem, 7vw, 4.5rem) 0 2rem; }
+
+.downloads h2 {
+  font-size: clamp(1.7rem, 4.5vw, 2.3rem);
+  letter-spacing: -.026em;
+  margin: 0 0 .4rem;
+}
+
+.version-line { color: var(--text-dim); margin: 0 0 2rem; font-size: .95rem; }
+
+.recommended {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--crimson);
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+}
+.recommended .what { min-width: 0; }
+.recommended .eyebrow {
+  font-size: .74rem;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--crimson);
+  font-weight: 650;
+  margin: 0 0 .3rem;
+}
+.recommended h3 { margin: 0 0 .25rem; font-size: 1.2rem; letter-spacing: -.015em; }
+.recommended .meta { margin: 0; color: var(--text-dim); font-size: .9rem; }
+
+/* Two columns for the same reason as .features: the asset count is even, and
+   auto-fit's three-across leaves the last card stranded. Six assets (once
+   Windows and Linux ship) fill three tidy rows. */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+@media (min-width: 780px) {
+  .grid { grid-template-columns: 1fr 1fr; }
+}
+
+.card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.15rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: .55rem;
+}
+.card h3 { margin: 0; font-size: 1rem; letter-spacing: -.01em; }
+.card .for { margin: 0; color: var(--text-dim); font-size: .88rem; flex: 1; }
+.card .row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  margin-top: .35rem;
+}
+.card .size { color: var(--text-dim); font-size: .82rem; font-variant-numeric: tabular-nums; }
+.card a.dl {
+  font-weight: 560;
+  font-size: .92rem;
+  text-decoration: none;
+  padding: .45rem .95rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+  color: var(--text);
+  white-space: nowrap;
+}
+.card a.dl:hover { border-color: var(--crimson); color: var(--crimson); }
+
+/* Platforms with no binary. A compact strip rather than more cards: three
+   dimmed cards padded the grid out to seven items and stranded one on its own
+   row, and the detail already lives in the notes below. */
+.unavailable-strip {
+  margin-top: 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: .5rem 1.4rem;
+  padding: .95rem 1.15rem;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  font-size: .88rem;
+  color: var(--text-dim);
+}
+.unavailable-strip .label {
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -.005em;
+}
+.unavailable-strip .item strong { color: var(--text); font-weight: 560; }
+
+.notice {
+  border-radius: 12px;
+  padding: 1.25rem 1.4rem;
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+}
+.notice.error { border-left: 3px solid var(--crimson); }
+.notice p { margin: 0 0 .8rem; color: var(--text-dim); font-size: .94rem; }
+.notice p:last-child { margin: 0; }
+
+.all-versions { margin-top: 1.75rem; font-size: .95rem; }
+
+/* ── notes ───────────────────────────────────────────────────────────────── */
+
+.notes { padding: 1rem 0 clamp(3rem, 8vw, 5rem); display: grid; gap: .7rem; }
+
+details {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+}
+details[open] { box-shadow: var(--shadow); }
+summary {
+  cursor: pointer;
+  font-weight: 560;
+  font-size: .97rem;
+  letter-spacing: -.008em;
+}
+summary::marker { color: var(--crimson); }
+details p, details li { color: var(--text-dim); font-size: .93rem; }
+details p:first-of-type { margin-top: .9rem; }
+details ol { padding-left: 1.2rem; }
+
+/* ── footer ──────────────────────────────────────────────────────────────── */
+
+footer {
+  border-top: 1px solid var(--border);
+  padding: 2.25rem clamp(1rem, 4vw, 2.5rem);
+  text-align: center;
+  font-size: .9rem;
+}
+footer p { margin: 0 0 .5rem; }
+footer .muted { color: var(--text-dim); font-size: .85rem; }
+
+@media (max-width: 560px) {
+  .recommended { flex-direction: column; align-items: stretch; }
+  .recommended .btn { width: 100%; }
+  .topbar nav a:first-child { display: none; }
+}

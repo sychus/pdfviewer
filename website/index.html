@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PDF Viewer — a lightweight PDF reader for every platform</title>
+<meta name="description" content="A fast, lightweight PDF reader built on PDFium. Opens instantly, remembers your page, asks for no permissions. Free and open source.">
+
+<meta property="og:title" content="PDF Viewer">
+<meta property="og:description" content="A fast, lightweight PDF reader built on PDFium. Opens instantly, remembers your page, asks for no permissions.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#8C1721">
+
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<a class="skip" href="#downloads">Skip to downloads</a>
+
+<header class="topbar">
+  <a class="brand" href="#top">
+    <img src="icon.svg" alt="" width="28" height="28">
+    <span>PDF&nbsp;Viewer</span>
+  </a>
+  <nav>
+    <a href="#features">Features</a>
+    <a href="#downloads">Download</a>
+    <a href="https://github.com/sychus/pdfviewer" rel="noopener">GitHub</a>
+  </nav>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <img class="hero-icon" src="icon.svg" alt="PDF Viewer icon" width="112" height="112">
+    <!-- No &nbsp; here. Non-breaking spaces make the phrase one unbreakable
+         word, which sets a min-content width the whole page then inherits and
+         overflows on narrow screens. Line breaks are handled by
+         `text-wrap: balance` in CSS, which degrades to normal wrapping. -->
+    <h1>A PDF reader that just opens the file.</h1>
+    <p class="lede">
+      Built on PDFium — the same engine inside Chrome. A four-thousand-page document opens in
+      about two and a half milliseconds. It remembers your page, and it asks for no permissions
+      at all.
+    </p>
+    <div class="hero-actions">
+      <a class="btn primary" href="#downloads" id="hero-cta">Download</a>
+      <a class="btn ghost" href="https://github.com/sychus/pdfviewer" rel="noopener">View source</a>
+    </div>
+    <p class="hero-note">Free and open source · GPL-3.0 · No tracking, no accounts, no network calls</p>
+  </section>
+
+  <section id="features" class="features">
+    <article>
+      <h2>Opens instantly</h2>
+      <p>
+        Documents are parsed lazily, so opening cost barely moves with size. Four thousand pages
+        and thirteen megabytes take roughly the same time as a one-page invoice — and that number
+        is enforced by a test, not a claim.
+      </p>
+    </article>
+    <article>
+      <h2>Remembers your page</h2>
+      <p>
+        Close it, rename the file, move it to another folder, copy it to a different device.
+        It still resumes exactly where you stopped, because documents are recognised by their
+        contents rather than by where they happen to sit.
+      </p>
+    </article>
+    <article>
+      <h2>Asks for nothing</h2>
+      <p>
+        No storage permission. No account. No analytics, no crash reporting, no network access of
+        any kind. It opens the file you handed it and that is the entire relationship.
+      </p>
+    </article>
+    <article>
+      <h2>Actually lightweight</h2>
+      <p>
+        Around 23&nbsp;MB on Android, downloading only the build for your processor instead of
+        three copies of the render engine you will never run.
+      </p>
+    </article>
+  </section>
+
+  <section id="downloads" class="downloads">
+    <h2>Download</h2>
+    <p class="version-line" id="version-line">Checking for the latest release…</p>
+
+    <div id="recommended" class="recommended" hidden></div>
+
+    <div id="all-downloads" class="grid"></div>
+    <div id="missing-strip"></div>
+
+    <div id="downloads-error" class="notice error" hidden>
+      <p>
+        Could not reach the GitHub API just now — it limits unauthenticated requests to 60 per
+        hour per address.
+      </p>
+      <p><a class="btn primary" href="https://github.com/sychus/pdfviewer/releases/latest" rel="noopener">Open the releases page</a></p>
+    </div>
+
+    <p class="all-versions">
+      <a href="https://github.com/sychus/pdfviewer/releases" rel="noopener">All previous versions on GitHub →</a>
+    </p>
+  </section>
+
+  <section class="notes">
+    <details>
+      <summary>macOS will block it the first time. Here is why, and what to do.</summary>
+      <p>
+        You will see <em>“Apple could not verify PDF Viewer is free of malware.”</em> Read that
+        carefully: it does not say malware was found. It says Apple could not verify. macOS shows
+        this for every application that has not been notarised, and notarising requires a paid
+        Apple Developer account this project does not have. Nothing was scanned and nothing was
+        found.
+      </p>
+      <ol>
+        <li>Drag <strong>PDF Viewer</strong> into Applications and open it. It gets blocked.</li>
+        <li>Go to <strong>System Settings → Privacy &amp; Security</strong>, scroll down, click
+            <strong>Open Anyway</strong>.</li>
+        <li>Confirm. Once only.</li>
+      </ol>
+      <p>
+        On macOS 15 and newer, right-click → Open no longer works for this. Prefer the terminal?
+        <code>xattr -dr com.apple.quarantine "/Applications/PDF Viewer.app"</code>
+      </p>
+      <p>The same instructions ship inside the disk image, next to the app.</p>
+    </details>
+
+    <details>
+      <summary>Installing the Android APK</summary>
+      <p>
+        Android asks you to allow installs from whichever app you downloaded with:
+        <strong>Settings → Apps → Special access → Install unknown apps</strong>. That prompt
+        appears for any APK not delivered by a store.
+      </p>
+      <p>
+        Take the <strong>arm64-v8a</strong> build unless you know otherwise — it covers
+        essentially every phone from the last decade. Requires Android 7.0 or newer.
+      </p>
+    </details>
+
+    <details>
+      <summary>Why there is no iOS version</summary>
+      <p>
+        The app builds for iOS. It cannot be distributed. iOS verifies code signatures in the
+        kernel, and only Apple can issue a signature it will accept — there is no equivalent to
+        Android's “install unknown apps”. Every route onto an iPhone requires the Apple Developer
+        Program at 99 USD a year, so no downloadable iOS build exists outside the App Store or
+        TestFlight.
+      </p>
+      <p>
+        There is a second, separate obstacle: this project is GPL-3.0, and the GPL conflicts with
+        App Store terms — Apple applies DRM that prevents the redistribution the licence requires.
+        It is the same conflict that got VLC pulled from the App Store in 2011.
+      </p>
+    </details>
+
+    <details>
+      <summary>Windows and Linux</summary>
+      <p>
+        Both are scaffolded but not yet published. Flutter does not cross-compile desktop targets,
+        so they cannot be produced on the Mac this is developed on — they need their own build
+        machines. You can build them from source today; see the README.
+      </p>
+    </details>
+  </section>
+
+</main>
+
+<footer>
+  <p>
+    <a href="https://github.com/sychus/pdfviewer" rel="noopener">Source</a> ·
+    <a href="https://github.com/sychus/pdfviewer/releases" rel="noopener">Releases</a> ·
+    <a href="https://github.com/sychus/pdfviewer/blob/main/LICENSE" rel="noopener">GPL-3.0</a>
+  </p>
+  <p class="muted">
+    Rendering by <a href="https://pdfium.googlesource.com/pdfium/" rel="noopener">PDFium</a>
+    via <a href="https://pub.dev/packages/pdfrx" rel="noopener">pdfrx</a>. Built with Flutter.
+  </p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

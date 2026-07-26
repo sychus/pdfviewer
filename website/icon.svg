@@ -1,0 +1,52 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!--
+    App icon. Vector so it stays crisp from 1024px down to the 16px menu bar.
+
+    Design constraints, in order of importance:
+      1. Legible at 16px. That rules out text, thin strokes and fine detail —
+         at menu-bar size an icon is a silhouette and nothing else.
+      2. Readable as "a document" in a fifth of a second. The folded corner is
+         the one shape everyone parses as a page without being told.
+      3. Crimson because that is the colour people associate with PDFs. The
+         app's UI is blue-grey, but an icon's job is recognition, not matching
+         the theme of a screen the user has not opened yet.
+  -->
+  <defs>
+    <linearGradient id="backdrop" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#D4444E"/>
+      <stop offset="1" stop-color="#8C1721"/>
+    </linearGradient>
+    <linearGradient id="page" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EDEDF0"/>
+    </linearGradient>
+    <filter id="lift" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="22" flood-color="#3D060B" flood-opacity="0.34"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" rx="228" fill="url(#backdrop)"/>
+
+  <g filter="url(#lift)">
+    <!-- Page body, with the top-right corner cut away for the fold. -->
+    <path d="M312 216 H596 L740 360 V808 Q740 832 716 832 H336 Q312 832 312 808 Z"
+          fill="url(#page)"/>
+    <!-- The fold itself: the underside of the turned-down corner. -->
+    <path d="M596 216 L740 360 H620 Q596 360 596 336 Z" fill="#C9CBD4"/>
+  </g>
+
+  <!--
+    Text bars, deliberately low-contrast and widely spaced.
+
+    A first pass used darker, tighter bars. They looked fine at 512px and
+    collapsed into one grey slab at 16px, fighting the page silhouette for
+    attention and winning. Detail that survives downscaling is not a feature.
+    These are light enough to fade out at menu-bar size, leaving the shape —
+    which is the only thing that reads at 16px anyway.
+  -->
+  <g fill="#C2C7D2">
+    <rect x="386" y="498" width="272" height="26" rx="13"/>
+    <rect x="386" y="596" width="272" height="26" rx="13"/>
+    <rect x="386" y="694" width="168" height="26" rx="13"/>
+  </g>
+</svg>
