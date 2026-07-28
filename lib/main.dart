@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import 'application/open_document.dart';
+import 'application/open_document/open_streaming_document.dart';
 import 'application/save_reading_position.dart';
 import 'domain/repositories/incoming_documents.dart';
 import 'infrastructure/pdf_engine.dart';
@@ -19,14 +19,13 @@ void main() {
   // Wired by hand. This is the composition root, and it is a handful of lines
   // — a DI container here would be ceremony, not architecture. It is also the
   // only place in the app where a concrete implementation is named.
+  const repository = PdfrxDocumentRepository();
   final positions = PrefsPositionStore();
 
   runApp(
     PdfViewerApp(
-      openDocument: OpenDocument(
-        documents: const PdfrxDocumentRepository(),
-        positions: positions,
-      ),
+      openStreamingDocument: const OpenStreamingDocument(repository),
+      positions: positions,
       savePosition: SaveReadingPosition(positions),
       incoming: _incomingDocuments(),
     ),
@@ -72,12 +71,14 @@ void _silenceDebugLoggingInRelease() {
 class PdfViewerApp extends StatelessWidget {
   const PdfViewerApp({
     super.key,
-    required this.openDocument,
+    required this.openStreamingDocument,
+    required this.positions,
     required this.savePosition,
     required this.incoming,
   });
 
-  final OpenDocument openDocument;
+  final OpenStreamingDocument openStreamingDocument;
+  final PrefsPositionStore positions;
   final SaveReadingPosition savePosition;
   final IncomingDocuments incoming;
 
@@ -92,7 +93,8 @@ class PdfViewerApp extends StatelessWidget {
         brightness: Brightness.dark,
       ),
       home: HomeScreen(
-        openDocument: openDocument,
+        openStreamingDocument: openStreamingDocument,
+        positions: positions,
         savePosition: savePosition,
         incoming: incoming,
       ),

@@ -1,0 +1,388 @@
+# Creates a GitHub Release every time a PR merges into main.
+#
+# Version is calculated automatically from conventional commits:
+#   feat:  → minor bump   (0.2.1 → 0.3.0)
+#   fix:   → patch bump   (0.2.1 → 0.2.2)
+#   feat!: or BREAKING CHANGE → major bump (0.2.1 → 1.0.0)
+#
+# Build artifacts (APKs + DMG) are attached when the required secrets
+# are configured. Without secrets the release is still created with
+# the changelog — useful while setting up CI for the first time.
+#
+# Required secrets for signed Android builds:
+#   KEYSTORE_BASE64    — base64-encoded upload.jks
+#   KEYSTORE_PASSWORD  — store and key password
+#   KEYSTORE_KEY_ALIAS — key alias (usually "upload")
+
+name: Release on merge
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  # ────────────────────────────────────────────────────────
+  # 1. Calculate the next version from conventional commits
+  # ────────────────────────────────────────────────────────
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.calc.outputs.new_version }}
+      new_tag: ${{ steps.calc.outputs.new_tag }}
+      bump: ${{ steps.calc.outputs.bump }}
+      changelog: ${{ steps.calc.outputs.changelog }}
+      skip: ${{ steps.calc.outputs.skip }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate next version
+        id: calc
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          LAST_TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)
+          if [ -z "$LAST_TAG" ]; then
+            LAST_TAG="v0.0.0"
+            RANGE="HEAD"
+          else
+            RANGE="${LAST_TAG}..HEAD"
+          fi
+          echo "Last tag: $LAST_TAG"
+
+          CURRENT="${LAST_TAG#v}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+
+          COMMITS=$(git log "$RANGE" --pretty=format:"%s" 2>/dev/null || true)
+          if [ -z "$COMMITS" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BUMP="none"
+          while IFS= read -r msg; do
+            if echo "$msg" | grep -qE '^[a-z]+(\(.+\))?!:' || echo "$msg" | grep -q 'BREAKING CHANGE'; then
+              BUMP="major"; break
+            elif echo "$msg" | grep -qE '^feat(\(.+\))?:'; then
+              [ "$BUMP" != "major" ] && BUMP="minor"
+            elif echo "$msg" | grep -qE '^fix(\(.+\))?:'; then
+              [ "$BUMP" = "none" ] && BUMP="patch"
+            fi
+          done <<< "$COMMITS"
+
+          [ "$BUMP" = "none" ] && BUMP="patch"
+
+          case "$BUMP" in
+            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
+            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
+            patch) PATCH=$((PATCH + 1)) ;;
+          esac
+
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          NEW_TAG="v${NEW_VERSION}"
+          echo "Bump: $BUMP → $NEW_VERSION"
+
+          # Build structured changelog
+          CHANGELOG=""
+          FEATS=$(git log "$RANGE" --pretty=format:"%s" | grep -E '^feat(\(.+\))?:' | sed -E 's/^feat(\(.+\))?: //' || true)
+          if [ -n "$FEATS" ]; then
+            CHANGELOG+=$'### New\n'
+            while IFS= read -r line; do CHANGELOG+="- ${line}"$'\n'; done <<< "$FEATS"
+            CHANGELOG+=$'\n'
+          fi
+
+          FIXES=$(git log "$RANGE" --pretty=format:"%s" | grep -E '^fix(\(.+\))?:' | sed -E 's/^fix(\(.+\))?: //' || true)
+          if [ -n "$FIXES" ]; then
+            CHANGELOG+=$'### Fixed\n'
+            while IFS= read -r line; do CHANGELOG+="- ${line}"$'\n'; done <<< "$FIXES"
+            CHANGELOG+=$'\n'
+          fi
+
+          OTHERS=$(git log "$RANGE" --pretty=format:"%s" | grep -vE '^(feat|fix)(\(.+\))?:' | grep -E '^[a-z]+(\(.+\))?:' | head -10 || true)
+          if [ -n "$OTHERS" ]; then
+            CHANGELOG+=$'### Other\n'
+            while IFS= read -r line; do CHANGELOG+="- ${line}"$'\n'; done <<< "$OTHERS"
+            CHANGELOG+=$'\n'
+          fi
+
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "new_tag=$NEW_TAG" >> "$GITHUB_OUTPUT"
+          echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "changelog<<CHANGELOG_EOF"
+            echo "$CHANGELOG"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+  # ────────────────────────────────────────────────────────
+  # 2. Build Android APKs (3 ABIs)
+  # ────────────────────────────────────────────────────────
+  build-android:
+    needs: version
+    if: needs.version.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.8"
+          channel: stable
+          cache: true
+
+      - name: Set up signing
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEYSTORE_KEY_ALIAS: ${{ secrets.KEYSTORE_KEY_ALIAS }}
+        if: env.KEYSTORE_BASE64 != ''
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > android/upload.jks
+          printf 'storeFile=../upload.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "$KEYSTORE_PASSWORD" "$KEYSTORE_KEY_ALIAS" "$KEYSTORE_PASSWORD" \
+            > android/key.properties
+
+      - name: Update version
+        run: |
+          VERSION="${{ needs.version.outputs.new_version }}"
+          CURRENT_BUILD=$(grep '^version:' pubspec.yaml | sed 's/.*+//')
+          NEW_BUILD=$((CURRENT_BUILD + 1))
+          sed -i "s/^version: .*/version: ${VERSION}+${NEW_BUILD}/" pubspec.yaml
+
+      - name: Build APKs
+        run: |
+          flutter pub get
+          flutter build apk --split-per-abi --release
+
+      - name: Rename artifacts
+        run: |
+          VERSION="${{ needs.version.outputs.new_version }}"
+          mkdir -p artifacts
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
+             "artifacts/pdfviewer-${VERSION}-android-arm64-v8a.apk"
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk \
+             "artifacts/pdfviewer-${VERSION}-android-armeabi-v7a.apk"
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk \
+             "artifacts/pdfviewer-${VERSION}-android-x86_64.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apks
+          path: artifacts/*.apk
+
+  # ────────────────────────────────────────────────────────
+  # 3. Build macOS DMG
+  # ────────────────────────────────────────────────────────
+  build-macos:
+    needs: version
+    if: needs.version.outputs.skip != 'true'
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.44.8"
+          channel: stable
+          cache: true
+
+      - name: Update version
+        run: |
+          VERSION="${{ needs.version.outputs.new_version }}"
+          CURRENT_BUILD=$(grep '^version:' pubspec.yaml | sed 's/.*+//')
+          NEW_BUILD=$((CURRENT_BUILD + 1))
+          sed -i '' "s/^version: .*/version: ${VERSION}+${NEW_BUILD}/" pubspec.yaml
+
+      - name: Build macOS app
+        run: |
+          flutter pub get
+          flutter build macos --release
+
+      - name: Create DMG
+        run: |
+          VERSION="${{ needs.version.outputs.new_version }}"
+          APP_PATH="build/macos/Build/Products/Release/PDF Viewer.app"
+          DMG_NAME="pdfviewer-${VERSION}-macos.dmg"
+
+          mkdir -p dmg_contents artifacts
+          cp -R "$APP_PATH" dmg_contents/
+          ln -s /Applications dmg_contents/Applications
+
+          hdiutil create \
+            -volname "PDF Viewer ${VERSION}" \
+            -srcfolder dmg_contents \
+            -ov -format UDZO \
+            "artifacts/${DMG_NAME}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: artifacts/*.dmg
+
+  # ────────────────────────────────────────────────────────
+  # 4. Create the GitHub Release
+  # ────────────────────────────────────────────────────────
+  release:
+    needs: [version, build-android, build-macos]
+    if: always() && needs.version.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download Android artifacts
+        if: needs.build-android.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: android-apks
+          path: artifacts/
+
+      - name: Download macOS artifact
+        if: needs.build-macos.result == 'success'
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-dmg
+          path: artifacts/
+
+      - name: Generate checksums
+        run: |
+          mkdir -p artifacts
+          if compgen -G "artifacts/*" > /dev/null; then
+            cd artifacts && sha256sum * | tee checksums.txt && cd ..
+          fi
+
+      - name: Build release notes
+        id: body
+        shell: bash
+        env:
+          VERSION: ${{ needs.version.outputs.new_version }}
+          CHANGELOG: ${{ needs.version.outputs.changelog }}
+          HAS_MACOS: ${{ needs.build-macos.result == 'success' }}
+          HAS_ANDROID: ${{ needs.build-android.result == 'success' }}
+        run: |
+          set -euo pipefail
+
+          # --- Title ---
+          LAST_TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -1)
+          RANGE="${LAST_TAG:+${LAST_TAG}..HEAD}"
+          RANGE="${RANGE:-HEAD}"
+          TITLE_SUFFIX=$(git log "$RANGE" --pretty=format:"%s" \
+            | grep -E '^feat(\(.+\))?:' | head -1 \
+            | sed -E 's/^feat(\(.+\))?: //' || true)
+          [ -z "$TITLE_SUFFIX" ] && \
+            TITLE_SUFFIX=$(git log -1 --pretty=format:"%s" | sed -E 's/^[a-z]+(\(.+\))?: //')
+          echo "title=v${VERSION} — ${TITLE_SUFFIX}" >> "$GITHUB_OUTPUT"
+
+          # --- Body ---
+          {
+            echo "## What changed"
+            echo ""
+            echo "$CHANGELOG"
+
+            # Downloads table
+            if [ "$HAS_MACOS" = "true" ] || [ "$HAS_ANDROID" = "true" ]; then
+              echo "## Downloads"
+              echo ""
+              echo "| File | For |"
+              echo "|---|---|"
+              [ "$HAS_MACOS" = "true" ] && \
+                echo "| \`pdfviewer-${VERSION}-macos.dmg\` | **macOS 10.15+**, universal (Intel and Apple Silicon) |"
+              if [ "$HAS_ANDROID" = "true" ]; then
+                echo "| \`pdfviewer-${VERSION}-android-arm64-v8a.apk\` | **Almost every phone from the last decade.** Start here. |"
+                echo "| \`pdfviewer-${VERSION}-android-armeabi-v7a.apk\` | Older 32-bit devices |"
+                echo "| \`pdfviewer-${VERSION}-android-x86_64.apk\` | Emulators |"
+              fi
+              echo ""
+            fi
+
+            echo "**iOS is not here, and cannot be.** Apple does not allow installing an app that is not signed"
+            echo "with a paid developer certificate — there is no downloadable iOS build outside the App Store or"
+            echo "TestFlight."
+            echo ""
+
+            # macOS Gatekeeper instructions
+            if [ "$HAS_MACOS" = "true" ]; then
+              echo "## Opening it on macOS"
+              echo ""
+              echo "The app is **not notarised** (requires a paid Apple Developer account). macOS will block it the first time."
+              echo ""
+              echo "1. Drag **PDF Viewer** into Applications and launch it. It gets blocked."
+              echo '2. **System Settings → Privacy & Security** → scroll down → **Open Anyway**.'
+              echo "3. Confirm. Once only."
+              echo ""
+              echo "On macOS 15 (Sequoia) and newer, right-click → Open no longer bypasses this."
+              echo ""
+              echo 'Terminal equivalent: `xattr -dr com.apple.quarantine "/Applications/PDF Viewer.app"`'
+              echo ""
+            fi
+
+            echo "## What the app does"
+            echo ""
+            echo "- Open a PDF from the picker, or — on Android — from **Open with** and share sheets"
+            echo "- Scroll, pinch to zoom, live page counter"
+            echo "- **Resumes where you left off**, surviving renames, moves, copies, and Android handing over a"
+            echo "  freshly cached path on every single open. Documents are identified by a fingerprint of their"
+            echo "  contents, never by where they sit"
+            echo ""
+            echo "## Notes"
+            echo ""
+            echo "**Android permissions: none.** No storage permission is declared. Incoming documents arrive"
+            echo "through the intent that granted access to that one file, and the picker uses the Storage Access"
+            echo "Framework. The app never asks for your library."
+            echo ""
+            echo "Android requires **7.0 (API 24)** or newer. To install an APK, allow installs from your browser"
+            echo 'or file manager: **Settings → Apps → Special access → Install unknown apps**.'
+            echo ""
+
+            # Checksums
+            if [ -f artifacts/checksums.txt ]; then
+              echo "## Checksums"
+              echo ""
+              echo '```'
+              cat artifacts/checksums.txt
+              echo '```'
+            fi
+          } > release_body.md
+
+      - name: Create tag
+        run: |
+          TAG="${{ needs.version.outputs.new_tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ needs.version.outputs.new_tag }}"
+          TITLE="${{ steps.body.outputs.title }}"
+
+          ARGS=(release create "$TAG" --title "$TITLE" --notes-file release_body.md)
+
+          if compgen -G "artifacts/*.apk" > /dev/null 2>&1; then
+            for f in artifacts/*.apk; do ARGS+=("$f"); done
+          fi
+          if compgen -G "artifacts/*.dmg" > /dev/null 2>&1; then
+            for f in artifacts/*.dmg; do ARGS+=("$f"); done
+          fi
+
+          gh "${ARGS[@]}"
