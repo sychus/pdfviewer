@@ -3,11 +3,13 @@ import 'dart:async';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
-import '../../application/open_document.dart';
+import '../../application/open_document/open_streaming_document.dart';
 import '../../application/save_reading_position.dart';
 import '../../domain/entities/document_source.dart';
+import '../../domain/entities/reading_position.dart';
 import '../../domain/repositories/document_repository.dart';
 import '../../domain/repositories/incoming_documents.dart';
+import '../../domain/repositories/position_store.dart';
 import '../viewer/viewer_screen.dart';
 
 const _pdfs = XTypeGroup(
@@ -25,12 +27,14 @@ const _pdfs = XTypeGroup(
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
-    required this.openDocument,
+    required this.openStreamingDocument,
+    required this.positions,
     required this.savePosition,
     required this.incoming,
   });
 
-  final OpenDocument openDocument;
+  final OpenStreamingDocument openStreamingDocument;
+  final PositionStore positions;
   final SaveReadingPosition savePosition;
   final IncomingDocuments incoming;
 
@@ -80,8 +84,35 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!alreadyBusy && mounted) setState(() => _busy = true);
 
     try {
-      final opened = await widget.openDocument(source);
-      if (!mounted) return;
+      // Open the document via the streaming path: this returns the first
+      // page already rendered and starts background prewarming.
+      final result = await widget.openStreamingDocument(source: source);
+      if (!mounted) {
+        result.close();
+        return;
+      }
+
+      // Look up the stored reading position, same logic as OpenDocument.
+      ReadingPosition? saved;
+      try {
+        saved = await widget.positions.load(result.document.id);
+      } catch (_) {
+        saved = null;
+      }
+      final resumeAt = saved == null
+          ? 1
+          : saved.page.clamp(1, result.document.pageCount);
+
+      // If we're resuming somewhere other than page 1, tell the scheduler
+      // to recenter its prewarm window there.
+      if (resumeAt > 1) {
+        result.recenter(resumeAt - 1); // 0-based
+      }
+
+      if (!mounted) {
+        result.close();
+        return;
+      }
 
       // Consume the pending document so it is not replayed the next time the
       // app resumes — otherwise closing the viewer bounces straight back into
@@ -91,18 +122,18 @@ class _HomeScreenState extends State<HomeScreen> {
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => ViewerScreen(
-            document: opened.document,
-            resumeAt: opened.resumeAt,
+            document: result.document,
+            resumeAt: resumeAt,
             savePosition: widget.savePosition,
+            onRecenter: result.recenter,
+            onClose: result.close,
+            documentHandle: result.documentHandle,
           ),
         ),
       );
     } on DocumentOpenException {
       _report("That file couldn't be opened as a PDF.");
     } catch (error, stackTrace) {
-      // Everything else has to surface too. A plugin failure or a sandbox
-      // denial that only gets rethrown into the void is exactly how a button
-      // ends up doing nothing at all, with no way for the user to tell why.
       debugPrint('Unexpected failure opening a document: $error\n$stackTrace');
       _report('Something went wrong opening that file.');
     } finally {

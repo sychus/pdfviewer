@@ -24,6 +24,17 @@ final class _Repository implements DocumentRepository {
 
   @override
   Future<Document> open(DocumentSource source) async => document;
+
+  @override
+  Future<OpenResult> openStreaming(
+    DocumentSource source, {
+    required int firstPageScaleNumerator,
+    required int firstPageScaleDenominator,
+    required int prewarmScaleNumerator,
+    required int prewarmScaleDenominator,
+    required int prewarmRadius,
+  }) =>
+      throw UnimplementedError('not used in these tests');
 }
 
 final class _FailingRepository implements DocumentRepository {
@@ -32,6 +43,17 @@ final class _FailingRepository implements DocumentRepository {
   @override
   Future<Document> open(DocumentSource source) async =>
       throw DocumentOpenException(source);
+
+  @override
+  Future<OpenResult> openStreaming(
+    DocumentSource source, {
+    required int firstPageScaleNumerator,
+    required int firstPageScaleDenominator,
+    required int prewarmScaleNumerator,
+    required int prewarmScaleDenominator,
+    required int prewarmRadius,
+  }) =>
+      throw UnimplementedError('not used in these tests');
 }
 
 final class _Store implements PositionStore {

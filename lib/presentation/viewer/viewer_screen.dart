@@ -17,6 +17,9 @@ class ViewerScreen extends StatefulWidget {
     required this.document,
     required this.resumeAt,
     required this.savePosition,
+    this.onRecenter,
+    this.onClose,
+    this.documentHandle,
   });
 
   final Document document;
@@ -26,6 +29,18 @@ class ViewerScreen extends StatefulWidget {
   final int resumeAt;
 
   final SaveReadingPosition savePosition;
+
+  /// Drives the prewarm scheduler with a 0-based page index.
+  /// Null when the streaming system is not in use.
+  final ValueChanged<int>? onRecenter;
+
+  /// Releases all streaming resources (PdfDocument, cache, scheduler).
+  /// Null when the streaming system is not in use.
+  final VoidCallback? onClose;
+
+  /// Opaque native document handle. Passed to [PdfSurface] so the
+  /// viewer reuses the already-open document.
+  final Object? documentHandle;
 
   @override
   State<ViewerScreen> createState() => _ViewerScreenState();
@@ -72,6 +87,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
     _pendingWrite?.cancel();
     _flush();
     _page.dispose();
+    widget.onClose?.call();
     super.dispose();
   }
 
@@ -99,6 +115,8 @@ class _ViewerScreenState extends State<ViewerScreen> {
         path: widget.document.source.uri,
         initialPage: widget.resumeAt,
         onPageChanged: _onPageChanged,
+        onRecenter: widget.onRecenter,
+        documentHandle: widget.documentHandle,
       ),
     );
   }
