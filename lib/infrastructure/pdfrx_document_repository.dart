@@ -72,27 +72,14 @@ final class PdfrxDocumentRepository implements DocumentRepository {
         throw const FormatException('the document reports zero pages');
       }
 
-      // Compute identity while the renderer warms up.
+      // Compute identity (reads only 128KB, constant cost).
       final documentId = await identity.compute(FileDocumentBytes(file));
       final title = _titleOf(file);
 
-      // Render the first page eagerly — this is the page the UI paints
-      // the moment OpenResult is returned.
-      final firstScale = firstPageScaleNumerator / firstPageScaleDenominator;
-      final page0 = pdf.pages[0];
-      final firstImage = await page0.render(
-        fullWidth: page0.width * firstScale,
-        fullHeight: page0.height * firstScale,
-        backgroundColor: 0xffffffff,
-      );
-      if (firstImage == null) {
-        throw const FormatException('failed to render the first page');
-      }
-      final firstPage = PdfrxRenderedPage(pageIndex: 0, image: firstImage);
-
-      // LRU cache, seeded with the first page.
+      // No eager page render here. PdfViewer handles its own rendering
+      // and doing it here too doubles memory usage — which kills large
+      // PDFs on memory-constrained devices.
       final cache = PdfrxRenderedPageCache(maxEntries: 32);
-      cache.put(0, firstPage);
 
       final document = Document(
         id: documentId,
@@ -152,8 +139,9 @@ final class PdfrxDocumentRepository implements DocumentRepository {
         },
       );
 
-      // Kick off the initial prewarm window around page 0.
-      scheduler.recenter(0);
+      // Prewarm is NOT fired here. It starts when the UI calls
+      // recenter() on the first scroll event, so opening is instant
+      // even for huge files.
 
       // Cleanup closure: tears down everything when the UI is done.
       var closed = false;
@@ -169,7 +157,6 @@ final class PdfrxDocumentRepository implements DocumentRepository {
 
       return OpenResult(
         document: document,
-        firstPage: firstPage,
         totalPages: pageCount,
         renderedPages: cache,
         documentHandle: documentRef,
