@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'application/save_reading_position.dart';
 import 'domain/repositories/incoming_documents.dart';
 import 'infrastructure/pdf_engine.dart';
-import 'infrastructure/pdfrx_document_repository.dart';
 import 'infrastructure/platform/no_incoming_documents.dart';
 import 'infrastructure/platform/shared_intent_documents.dart';
 import 'infrastructure/prefs_position_store.dart';
@@ -15,12 +14,10 @@ void main() {
   _silenceDebugLoggingInRelease();
   initializePdfEngine();
 
-  const repository = PdfrxDocumentRepository();
   final positions = PrefsPositionStore();
 
   runApp(
     PdfViewerApp(
-      documents: repository,
       positions: positions,
       savePosition: SaveReadingPosition(positions),
       incoming: _incomingDocuments(),
@@ -47,13 +44,11 @@ void _silenceDebugLoggingInRelease() {
 class PdfViewerApp extends StatelessWidget {
   const PdfViewerApp({
     super.key,
-    required this.documents,
     required this.positions,
     required this.savePosition,
     required this.incoming,
   });
 
-  final PdfrxDocumentRepository documents;
   final PrefsPositionStore positions;
   final SaveReadingPosition savePosition;
   final IncomingDocuments incoming;
@@ -69,7 +64,6 @@ class PdfViewerApp extends StatelessWidget {
         brightness: Brightness.dark,
       ),
       home: HomeScreen(
-        documents: documents,
         positions: positions,
         savePosition: savePosition,
         incoming: incoming,

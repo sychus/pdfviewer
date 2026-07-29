@@ -12,6 +12,7 @@ class PdfSurface extends StatefulWidget {
     required this.path,
     this.initialPage = 1,
     this.onPageChanged,
+    this.onDocumentLoaded,
   }) : assert(initialPage >= 1, 'pages are 1-based');
 
   final String path;
@@ -21,6 +22,10 @@ class PdfSurface extends StatefulWidget {
 
   /// Fires with the 1-based page number as the user scrolls.
   final ValueChanged<int>? onPageChanged;
+
+  /// Fires once when the PDF is loaded, with the total page count.
+  /// The caller never touches pdfrx — just gets an int.
+  final ValueChanged<int>? onDocumentLoaded;
 
   @override
   State<PdfSurface> createState() => _PdfSurfaceState();
@@ -38,6 +43,11 @@ class _PdfSurfaceState extends State<PdfSurface> {
       params: PdfViewerParams(
         onPageChanged: (pageNumber) {
           if (pageNumber != null) widget.onPageChanged?.call(pageNumber);
+        },
+        onDocumentChanged: (document) {
+          if (document != null) {
+            widget.onDocumentLoaded?.call(document.pages.length);
+          }
         },
       ),
     );

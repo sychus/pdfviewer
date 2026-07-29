@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../application/save_reading_position.dart';
-import '../../domain/entities/document.dart';
+import '../../domain/entities/document_id.dart';
 import '../../domain/entities/document_source.dart';
 import '../widgets/pdf_surface.dart';
 
@@ -11,19 +11,13 @@ import '../widgets/pdf_surface.dart';
 class ViewerScreen extends StatefulWidget {
   const ViewerScreen({
     super.key,
-    this.document,
     required this.source,
     required this.resumeAt,
     required this.savePosition,
-    this.showPageCount = true,
+    this.documentId,
   });
 
-  /// May be null while identity is still resolving in the background.
-  /// Rendering starts immediately regardless — identity is only needed
-  /// for position save and the page counter.
-  final Document? document;
-
-  /// Always available — the file path the viewer opens from.
+  /// The file path. Always available immediately.
   final DocumentSource source;
 
   /// 1-based page to open at.
@@ -31,8 +25,9 @@ class ViewerScreen extends StatefulWidget {
 
   final SaveReadingPosition savePosition;
 
-  /// Whether to show the page counter in the app bar.
-  final bool showPageCount;
+  /// Content fingerprint, resolved async. Null until ready.
+  /// Position save is deferred until this arrives.
+  final DocumentId? documentId;
 
   @override
   State<ViewerScreen> createState() => _ViewerScreenState();
@@ -43,6 +38,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
 
   late final _page = ValueNotifier<int>(widget.resumeAt);
   late int _persisted = widget.resumeAt;
+  int? _pageCount;
   Timer? _pendingWrite;
 
   void _onPageChanged(int page) {
@@ -51,13 +47,17 @@ class _ViewerScreenState extends State<ViewerScreen> {
     _pendingWrite = Timer(_writeDelay, _flush);
   }
 
+  void _onDocumentLoaded(int pageCount) {
+    setState(() => _pageCount = pageCount);
+  }
+
   void _flush() {
-    final doc = widget.document;
-    if (doc == null) return; // identity not resolved yet, skip save
+    final id = widget.documentId;
+    if (id == null) return; // identity not resolved yet
     final page = _page.value;
     if (page == _persisted) return;
     _persisted = page;
-    unawaited(widget.savePosition(doc.id, page));
+    unawaited(widget.savePosition(id, page));
   }
 
   @override
@@ -70,21 +70,20 @@ class _ViewerScreenState extends State<ViewerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final doc = widget.document;
-    final title = doc?.title ?? widget.source.uri.split('/').last;
+    final title = widget.source.uri.split('/').last;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(title, overflow: TextOverflow.ellipsis),
         actions: [
-          if (widget.showPageCount && doc != null)
+          if (_pageCount != null)
             Center(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: ValueListenableBuilder<int>(
                   valueListenable: _page,
                   builder: (context, page, _) => Text(
-                    '$page / ${doc.pageCount}',
+                    '$page / $_pageCount',
                     style: Theme.of(context).textTheme.labelLarge,
                   ),
                 ),
@@ -96,6 +95,7 @@ class _ViewerScreenState extends State<ViewerScreen> {
         path: widget.source.uri,
         initialPage: widget.resumeAt,
         onPageChanged: _onPageChanged,
+        onDocumentLoaded: _onDocumentLoaded,
       ),
     );
   }
