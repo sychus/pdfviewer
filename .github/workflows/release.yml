@@ -154,9 +154,10 @@ jobs:
         if: env.KEYSTORE_BASE64 != ''
         run: |
           echo "$KEYSTORE_BASE64" | base64 -d > android/upload.jks
-          printf 'storeFile=../upload.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
-            "$KEYSTORE_PASSWORD" "$KEYSTORE_KEY_ALIAS" "$KEYSTORE_PASSWORD" \
-            > android/key.properties
+          echo "storeFile=../upload.jks" > android/key.properties
+          echo "storePassword=$KEYSTORE_PASSWORD" >> android/key.properties
+          echo "keyAlias=$KEYSTORE_KEY_ALIAS" >> android/key.properties
+          echo "keyPassword=$KEYSTORE_PASSWORD" >> android/key.properties
 
       - name: Update version
         run: |
@@ -217,7 +218,7 @@ jobs:
       - name: Create DMG
         run: |
           VERSION="${{ needs.version.outputs.new_version }}"
-          APP_PATH="build/macos/Build/Products/Release/PDF Viewer.app"
+          APP_PATH="build/macos/Build/Products/Release/pdfviewer.app"
           DMG_NAME="pdfviewer-${VERSION}-macos.dmg"
 
           mkdir -p dmg_contents artifacts
