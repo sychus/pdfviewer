@@ -49,7 +49,6 @@ final class DocumentOpenException implements Exception {
 class OpenResult {
   OpenResult({
     required this.document,
-    required this.firstPage,
     required this.totalPages,
     required this.renderedPages,
     required this.recenter,
@@ -59,9 +58,6 @@ class OpenResult {
   });
 
   final Document document;
-
-  /// The first page, already rendered and ready to paint.
-  final RenderedPage firstPage;
 
   /// Total pages, as reported by the cross-ref table.
   final int totalPages;
