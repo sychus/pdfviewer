@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart';
 
-import '../../application/open_document/open_streaming_document.dart';
 import '../../application/save_reading_position.dart';
+import '../../domain/entities/document.dart';
 import '../../domain/entities/document_source.dart';
 import '../../domain/entities/reading_position.dart';
 import '../../domain/repositories/document_repository.dart';
@@ -20,20 +20,16 @@ const _pdfs = XTypeGroup(
 );
 
 /// Empty state, and the app's entry point for documents.
-///
-/// Two ways in, one destination: the user picks a file here, or the operating
-/// system hands us one because they tapped a PDF elsewhere and chose this app.
-/// Both funnel through [_HomeScreenState._open].
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
-    required this.openStreamingDocument,
+    required this.documents,
     required this.positions,
     required this.savePosition,
     required this.incoming,
   });
 
-  final OpenStreamingDocument openStreamingDocument;
+  final DocumentRepository documents;
   final PositionStore positions;
   final SaveReadingPosition savePosition;
   final IncomingDocuments incoming;
@@ -49,12 +45,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-
-    // Documents handed to an app that is already running.
     _incoming = widget.incoming.stream().listen(_open);
-
-    // And the one this launch may have been started with. Deferred to after
-    // the first frame so there is a Navigator to push onto.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final launchedWith = await widget.incoming.initial();
       if (launchedWith != null) await _open(launchedWith);
@@ -84,50 +75,26 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!alreadyBusy && mounted) setState(() => _busy = true);
 
     try {
-      // Open the document via the streaming path: this returns the first
-      // page already rendered and starts background prewarming.
-      final result = await widget.openStreamingDocument(source: source);
-      if (!mounted) {
-        result.close();
-        return;
-      }
+      // Navigate FIRST, resolve identity AFTER. PdfViewer.file() handles
+      // its own progressive loading so the user sees pages immediately.
+      // The document identity (fingerprint) runs in the background — it
+      // only matters for position restore, not for rendering.
+      //
+      // We kick off the identity computation in parallel with navigation
+      // so it's usually ready before the user even scrolls.
+      final docFuture = widget.documents.open(source);
 
-      // Look up the stored reading position, same logic as OpenDocument.
-      ReadingPosition? saved;
-      try {
-        saved = await widget.positions.load(result.document.id);
-      } catch (_) {
-        saved = null;
-      }
-      final resumeAt = saved == null
-          ? 1
-          : saved.page.clamp(1, result.document.pageCount);
-
-      // If we're resuming somewhere other than page 1, tell the scheduler
-      // to recenter its prewarm window there.
-      if (resumeAt > 1) {
-        result.recenter(resumeAt - 1); // 0-based
-      }
-
-      if (!mounted) {
-        result.close();
-        return;
-      }
-
-      // Consume the pending document so it is not replayed the next time the
-      // app resumes — otherwise closing the viewer bounces straight back into
-      // it and the app feels stuck.
       widget.incoming.acknowledge();
+
+      if (!mounted) return;
 
       await Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => ViewerScreen(
-            document: result.document,
-            resumeAt: resumeAt,
+          builder: (_) => _DeferredViewerScreen(
+            source: source,
+            docFuture: docFuture,
+            positions: widget.positions,
             savePosition: widget.savePosition,
-            onRecenter: result.recenter,
-            onClose: result.close,
-            documentHandle: result.documentHandle,
           ),
         ),
       );
@@ -168,6 +135,74 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Navigates immediately showing the PDF via [PdfSurface], while the
+/// document identity resolves in the background. Once it lands, position
+/// restore and page counting become available.
+class _DeferredViewerScreen extends StatefulWidget {
+  const _DeferredViewerScreen({
+    required this.source,
+    required this.docFuture,
+    required this.positions,
+    required this.savePosition,
+  });
+
+  final DocumentSource source;
+  final Future<Document> docFuture;
+  final PositionStore positions;
+  final SaveReadingPosition savePosition;
+
+  @override
+  State<_DeferredViewerScreen> createState() => _DeferredViewerScreenState();
+}
+
+class _DeferredViewerScreenState extends State<_DeferredViewerScreen> {
+  Document? _doc;
+  int? _resumeAt;
+  bool _resolved = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveDocument();
+  }
+
+  Future<void> _resolveDocument() async {
+    try {
+      final doc = await widget.docFuture;
+      if (!mounted) return;
+
+      ReadingPosition? saved;
+      try {
+        saved = await widget.positions.load(doc.id);
+      } catch (_) {
+        saved = null;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _doc = doc;
+        _resumeAt = saved?.page.clamp(1, doc.pageCount);
+        _resolved = true;
+      });
+    } catch (_) {
+      // Identity resolution failed — the PDF still renders fine, we just
+      // can't restore position or show the page count. Not fatal.
+      if (mounted) setState(() => _resolved = true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ViewerScreen(
+      document: _doc,
+      source: widget.source,
+      resumeAt: _resumeAt ?? 1,
+      savePosition: widget.savePosition,
+      showPageCount: _resolved && _doc != null,
     );
   }
 }
